@@ -1,6 +1,6 @@
 
-pwOR = "a0mvdt2d"
-usrNameOR = "johnson.bolaji@commscope.com"
+pwOR = ""
+usrNameOR = ""
 
 #import required libraries
 
