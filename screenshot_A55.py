@@ -1,24 +1,25 @@
+#--------------------------
+#Import required modules
 
-pwOR = ""
-usrNameOR = ""
+#Factory modules
+from io import BytesIO
+from datetime import date
+import subprocess
+import os
+import os.path
+import shutil
+import glob
+import time
+import re
 
-#import required libraries
-
+#3rd party modules
 from openpyxl import Workbook, load_workbook, drawing
 from openpyxl.drawing import line, image
 from openpyxl.drawing.image import Image
 from PIL import Image
-from io import BytesIO
-from datetime import date
-#import tkinter as tk
 import easygui
-import subprocess
-import os
 from easygui import *
 import selenium
-import shutil
-import glob
-import os.path
 import getpass
 import cv2
 import numpy as np
@@ -30,11 +31,10 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 import chromedriver_autoinstaller
-import time
-
 
 #----------------------------------------------------------------
 
+#Pole class to hold BNG Grid References for a specific pole.
 class Pole:
     def __init__(BT_ID,xGRF,yGRF,AFN1,AFN2):
 
@@ -43,7 +43,7 @@ class Pole:
         BT_ID.AFN1 = AFN1
         BT_ID.AFN2 = AFN2
 
-
+#
 FILEBROWSER_PATH = os.path.join(os.getenv('WINDIR'), 'explorer.exe')
 
 def explore(path):
@@ -69,15 +69,31 @@ print("Select folder to contain your screenshots")
 
 screenshotPath = easygui.diropenbox()
 
+driver = webdriver.Chrome()
+        
+wait = WebDriverWait(driver, 600)
+        
+# Open the website
+driver.get('https://www.beta.openreach.co.uk/cpportal/login')
+
+url = 'https://www.beta.openreach.co.uk/cpportal/dashboard'
+        
+wait.until(EC.url_matches(url))
+        
+
+
 for filename in os.listdir(A55Path):
     if filename.endswith(".xlsx"):
 
+        driver.get("https://www.beta.openreach.co.uk/ormaps/pia/v2/")
+        
+        #--------------------------------------------
+        #Get grid reference for relevant A55 element
         substring = "A55"
 
         A55Book = load_workbook(A55Path + '\\' + filename)
 
         #check containing A55 text
-        
         for s in range(len(A55Book.sheetnames)):
             if substring in A55Book.sheetnames[s]:
                 break
@@ -92,39 +108,10 @@ for filename in os.listdir(A55Path):
         GRF[1] = GRF[1].strip()
 
         workPole = Pole(GRF[0],GRF[1],'xox','xoxx')
-        #-------------------------------------------- get SS
-        #PIAscreenshot(workPole.xGRF,workPole.yGRF,cdPATH,usrNameOR,pwOR) #call screenshot function, NB put details in config file
-
-        driver = webdriver.Chrome()
-
-        # Open the website
-        driver.get('https://www.openreach.co.uk/cpportal/login')
-
-        #element = WebDriverWait(driver, 20).until(EC.visibility_of_element_located((CSS_SELECTOR, ".panel-title a")))
-        #element.click()
-
-        id_box = driver.find_element_by_xpath("//*[@id='smLoginFormId']/div[1]/div[1]/input")
-
-        id_box.click
-
-        id_box.send_keys(usrNameOR)
-
-        pw_box = driver.find_element_by_xpath("//*[@id='smLoginFormId']/div[1]/div[2]/input")
-
-        pw_box.click
-    
-        pw_box.send_keys(pwOR)
-
-        login_button = driver.find_element_by_xpath("//*[@id='smLoginFormId']/div[2]/button")
-
-        driver.implicitly_wait(5) # seconds
-
-        pw_box.send_keys(Keys.RETURN)
-
-        time.sleep(5)
-
-        driver.get("https://www.openreach.co.uk/ormaps/pia/v2")
-
+        
+        #--------------------------------------------
+        #Get screenshot from openreach website - NOTE AS OF V2.0r210222 THIS SECTION HAS BEEN OVERHAULED TO COMPLY WITH NEW OPENREACH LOGIN SYSTEM (AZURE SSO)
+        
         time.sleep(5)
 
         threelines = driver.find_element_by_xpath("//*[@id='searchpanel']/div[1]/i")
@@ -184,17 +171,15 @@ for filename in os.listdir(A55Path):
         hover.perform()
         time.sleep(3)
                 
-     
-        driver.close()
-
+        
         #--------------------------------------------
+        #Perform file operations for screenshots and csv file
         folder_path = (r'C:\Users\%s\Downloads\*' %user) #navigate to downloads
 
         files = glob.glob(folder_path)
         
-        max_file = max(files, key=os.path.getctime)
-
-        
+        max_file = max(files, key=os.path.getctime) #get path of most recent file in downloads folder
+    
         image = cv2.imread(max_file) #Read screenshot
         
         height, width, channels = image.shape #Get image dimensions
@@ -209,16 +194,15 @@ for filename in os.listdir(A55Path):
 
         thickness = 5 #circle thickness in pixels
 
-        cv2.circle(image, center_coordinates, radius, color, thickness)
+        cv2.circle(image, center_coordinates, radius, color, thickness) #Draw circle on image depending on above parameters
 
         cv2.imwrite(screenshotPath + "\\" + filename.removesuffix('.xlsx') + '.png', image)
         
-
         img = drawing.image.Image(screenshotPath + "\\" + filename.removesuffix('.xlsx') + '.png')
 
         cover.add_image(img,'B6')
 
-        A55Book.save(A55Path + "\\" + filename)
+        A55Book.save(A55Path + "\\" + filename) #Save final xlsx file
 
         
          
